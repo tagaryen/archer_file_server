@@ -18,11 +18,10 @@
   
   <dependencies>
   	<dependency>
-	  <groupId>com.archer</groupId>
-	  <artifactId>archer-tools</artifactId>
-	  <version>1.2.2</version>
-	  <!-- url=https://github.com/Archerxy/archer-tools/releases/tag/v1.2.2 -->
-	</dependency>
+	  <groupId>io.github.tagaryen</groupId>  
+	  <artifactId>archer-tools</artifactId>  
+	  <version>1.2.6</version>  
+	</dependency> 
   </dependencies>
 
   <build>
