@@ -22,7 +22,7 @@ public class ArcherMessage {
 		try {
 			int readCount;
 			if(data == null) {
-				int dataLen = in.readInt32();
+				int dataLen = in.readInt32() - 1;
 				byte version = (byte) in.readInt8();
 				if(VERSION_BYTE != version) {
 					throw new ArcherException("Invalid message version " + version);
