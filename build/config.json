@@ -1,0 +1,31 @@
+{
+    "log": {
+        "desc": "日志相关配置",
+        "path": "logs",
+        "level": "TRACE"
+    },
+    "http": {
+        "desc": "http服务端配置",
+        "host": "127.0.0.1",
+        "port": 9617,
+        "multithread": true,
+        "threadNum": 2
+    },
+    "rpc": {
+        "desc": "rpc服务端配置",
+        "host": "0.0.0.0",
+        "port": 9611,
+        "multithread": true,
+        "threadNum": 2
+    },
+    "file": {
+        "desc": "文件资源配置",
+        "path": "data"
+    },
+    "database": {
+        "desc": "lmdb数据库配置",
+        "path": "database",
+        "readers": 4,
+        "memory": 136577024
+    }
+}

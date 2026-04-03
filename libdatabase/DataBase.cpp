@@ -1,6 +1,9 @@
 #include "DataBase.h"
+#include <regex>
 
 using namespace fs::database;
+
+const std::string publicFileKey = "0000000000000000000000000000000000000000000000000000000000000000";
 
 static std::string FileInfoIntToString(size_t n) {
     char chars[] = {((char) ((n >> 24) & 0xff)), ((char) ((n >> 16) & 0xff)), ((char) ((n >> 8) & 0xff)), ((char) (n & 0xff))};
@@ -161,9 +164,146 @@ bool DataBase::saveKv(std::string const& key, std::string const& val) {
     return true;
 }
 
-int DataBase::saveFileInfo(std::shared_ptr<FileInfo> const& fileInfo) {
+
+std::vector<std::string> DataBase::getFileList(std::string const& key) {
     int rc = 0;
+
+    // MDB_dbi dbi;
+    MDB_val dbKey, dbValue;
+    MDB_cursor *cursor = NULL;
+    MDB_txn *txn;
+
+    if((rc = mdb_txn_begin(m_env, NULL, 0, &txn))) {
+        LOG_error("database Begin read transaction failed, due to %s", mdb_strerror(rc));
+        return std::vector<std::string>();
+    }
+
+    LOG_trace("Database get key: %s, key.length:%llu", key.c_str(), key.length());
+
+    dbKey.mv_size = key.length();
+    dbKey.mv_data = (void *)(key.c_str());
+
+    dbValue.mv_size = 0;
+    LOG_info("database Begin read transaction Key = %s", key.c_str());
+    if((rc = mdb_get(txn, m_dbi, &dbKey, &dbValue))) {
+        LOG_error("database Readding key %s failed, due to %s", key.c_str(), mdb_strerror(rc));
+        mdb_txn_abort(txn);
+        return std::vector<std::string>();
+    }
+    std::string val((char *)dbValue.mv_data, dbValue.mv_size);
+    if((rc = mdb_txn_commit(txn))) {
+        LOG_error("database read Commit transaction failed, due to %s", mdb_strerror(rc));
+        mdb_txn_abort(txn);
+        return std::vector<std::string>();
+    }
+    // LOG_trace("database Begin getList val = %s", val.c_str());
+    std::regex reg("@`");
+    return std::vector<std::string>(std::sregex_token_iterator(val.begin(), val.end(), reg, -1), std::sregex_token_iterator());
+}
+
+//time = yyyy-MM-dd HH:mm:ss  len = 19
+int DataBase::saveFileList(std::string const& key, std::vector<std::string> const& datas) {
+
+    int rc = 0;
+    // MDB_dbi dbi;
+    MDB_val dbKey, dbValue;
+    MDB_txn *txn;
+
+    std::string value = "";
+    for(std::string const& s: datas) {
+        value += s + "@`";
+    }
     
+    LOG_trace("Begin to save file list to database with key = '%s', key.length = %llu", key.c_str(), key.length());
+
+    if((rc = mdb_txn_begin(m_env, NULL, 0, &txn))) {
+        LOG_error("database Begin write transaction failed, due to %s", mdb_strerror(rc));
+        return rc;
+    }
+
+    LOG_info("database Begin write transaction key = %s, value = %s", 
+            key.c_str(), value.c_str());
+
+    dbKey.mv_size = key.length();
+    dbKey.mv_data = (void *)key.c_str();
+    dbValue.mv_size = value.length();
+    dbValue.mv_data = (void *)value.c_str();
+
+    if((rc = mdb_put(txn, m_dbi, &dbKey, &dbValue, 0))) {
+        LOG_error("database Writting data failed, due to %s", mdb_strerror(rc));
+        mdb_txn_abort(txn);
+        return rc;
+    }
+    if((rc = mdb_txn_commit(txn))) {
+        LOG_error("database Commit transaction failed, due to %s", mdb_strerror(rc));
+        mdb_txn_abort(txn);
+        return rc;
+    }
+
+    LOG_info("Save file information to database with key = '%s' end", key.c_str());
+
+    return rc;
+}
+
+std::shared_ptr<Page> DataBase::listFile(std::string const& publicKeyHex, int pageNum) {
+    if(pageNum <= 0) {
+        pageNum = 1;
+    }
+    std::string fileKey = publicKeyHex;
+    if(fileKey.empty()) {
+        fileKey = publicFileKey;
+    }
+    std::vector<std::string> list = getFileList(fileKey);
+    if(list.size() == 1 && list[0].empty()) {
+        return std::make_shared<Page>(0, pageNum, std::vector<FileInfo>());
+    } 
+    std::sort(list.begin(), list.end(), [](std::string a, std::string b) {
+        return fs::common::timeToLong(a.substr(0, 20)) > fs::common::timeToLong(b.substr(0, 20));
+    });
+    int total = list.size();
+    if(total <= 0) {
+        return std::make_shared<Page>(0, pageNum, std::vector<FileInfo>());
+    }
+    std::vector<FileInfo> files;
+    
+    int start = (pageNum - 1) * 10, end = pageNum * 10;
+    if(start > list.size()) {
+        start = total;
+    }
+    if(end > total) {
+        end = total;
+    }
+    for(auto it = list.begin() + start; it != list.begin() + end; it++) {
+        files.push_back(FileInfo((*it).substr(20), "", (*it).substr(0, 19), ""));
+    }
+    return std::make_shared<Page>(total, pageNum, files);
+}
+
+int DataBase::saveFileInfo(std::shared_ptr<FileInfo> const& fileInfo) {
+
+    std::string fileKey = fileInfo->getPublicKeyHex();
+    if(fileKey.empty()) {
+        fileKey = publicFileKey;
+    }
+
+    bool saved = false;
+    std::string val = fileInfo->getUpdateTime() + fileInfo->getRealName();
+    std::vector<std::string> list = getFileList(fileKey);
+    for(size_t i = 0; i < list.size(); i++) {
+        if(list[i].substr(19) == val.substr(19)) {
+            list[i] = val;
+            saved = true;
+            break;
+        }
+    }
+    int rc = 0;
+    if(!saved) {
+        list.push_back(val);
+    }
+    if(rc = saveFileList(fileKey, list)) {
+        return rc;
+    }
+
     // MDB_dbi dbi;
     MDB_val dbKey, dbValue;
     MDB_txn *txn;
@@ -171,7 +311,7 @@ int DataBase::saveFileInfo(std::shared_ptr<FileInfo> const& fileInfo) {
     std::string key = fileInfo->getName();
     std::string value = fileInfo->encode();
     
-    LOG_info("Begin to save file information to database with key = '%s', key.length = %llu", key.c_str(), key.length());
+    LOG_trace("Begin to save file information to database with key = '%s', key.length = %llu", key.c_str(), key.length());
 
     if((rc = mdb_txn_begin(m_env, NULL, 0, &txn))) {
         LOG_error("database Begin write transaction failed, due to %s", mdb_strerror(rc));
@@ -220,6 +360,7 @@ std::shared_ptr<FileInfo> DataBase::getFileInfo(std::string const & name) {
     dbKey.mv_size = name.length();
     dbKey.mv_data = (void *)(name.c_str());
 
+    dbValue.mv_size = 0;
     LOG_info("database Begin read transaction Key = %s", name.c_str());
     if((rc = mdb_get(txn, m_dbi, &dbKey, &dbValue))) {
         LOG_error("database Readding key %s failed, due to %s", name.c_str(), mdb_strerror(rc));

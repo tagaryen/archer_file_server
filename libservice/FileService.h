@@ -21,6 +21,8 @@ public:
 
     std::shared_ptr<fs::database::FileInfo> getFileInfo(std::string const & filename, std::string const& signatire);
 
+    void handleFileListMessage(std::shared_ptr<server::ServerRequest> const& request, int pageNum);
+
     void handleFileUpoadMessage(std::shared_ptr<server::ServerRequest> const& request, std::shared_ptr<database::FileInfo> const& message);
 
     void handleFileDownoadMessage(std::shared_ptr<server::ServerRequest> const& request, std::shared_ptr<database::FileInfo> const& message);

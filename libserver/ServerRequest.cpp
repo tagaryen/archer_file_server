@@ -33,6 +33,9 @@ ServerRequest::ServerRequest(HttpRequest *req, HttpResponse *res, RequestType ty
 
 
 void ServerRequest::parseFileRequest() {
+    if(m_uri == FS_FILE_LIST_API) {
+        return ;
+    }
     const char *filename = http_request_get_query_param(m_req, "filename");
     if(!filename) {
         m_isValid = false;

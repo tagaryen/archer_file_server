@@ -29,7 +29,8 @@ public:
            uri == FS_OPEN_API_FILE_DOWNLOAD || 
            uri == FS_API_FILE_UPLOAD || 
            uri == FS_API_FILE_VIEW || 
-           uri == FS_API_FILE_DOWNLOAD) {
+           uri == FS_API_FILE_DOWNLOAD ||
+           uri == FS_FILE_LIST_API) {
                return FILE_REQUEST;
         } else if(
            uri == FS_OPEN_API_JSON || 

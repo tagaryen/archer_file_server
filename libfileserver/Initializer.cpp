@@ -36,6 +36,7 @@ void fs::initializer::startHTTPServer(std::shared_ptr<fs::database::DataBase> co
     std::shared_ptr<fs::api::FileUploadOpenApi>   uploadOpenHandler = std::make_shared<fs::api::FileUploadOpenApi>(fileService);
     std::shared_ptr<fs::api::FileViewApi>         viewHandler = std::make_shared<fs::api::FileViewApi>(fileService);
     std::shared_ptr<fs::api::FileViewOpenApi>     viewOpenHandler = std::make_shared<fs::api::FileViewOpenApi>(fileService);
+    std::shared_ptr<fs::api::FileListApi>         fileListHandler = std::make_shared<fs::api::FileListApi>(fileService);
     
     std::shared_ptr<fs::api::JsonGetApi>          jsonGetHandler = std::make_shared<fs::api::JsonGetApi>(jsonService);
     std::shared_ptr<fs::api::JsonGetOpenApi>      jsonGetOpenHandler = std::make_shared<fs::api::JsonGetOpenApi>(jsonService);
@@ -48,6 +49,7 @@ void fs::initializer::startHTTPServer(std::shared_ptr<fs::database::DataBase> co
     server.addHandler(uploadOpenHandler);
     server.addHandler(viewHandler);
     server.addHandler(viewOpenHandler);
+    server.addHandler(fileListHandler);
     
     server.addHandler(jsonGetHandler);
     server.addHandler(jsonGetOpenHandler);

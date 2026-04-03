@@ -40,6 +40,23 @@ private:
     std::string      m_encode;
 };
 
+class Page {
+
+public:
+    Page(int total, int pageNum, std::vector<FileInfo> const& files) {
+        m_total = total;
+        m_pageNum = pageNum;
+        m_files = files;
+    }
+    int getTotal() {return m_total;}
+    int getPageNum() {return m_pageNum;}
+    std::vector<FileInfo> const& getFile() {return m_files;}
+private:
+    int m_total;
+    int m_pageNum;
+    std::vector<FileInfo> m_files;
+};
+
 class DataBase 
 {
 
@@ -49,6 +66,8 @@ public:
     ~DataBase() {
         mdb_env_close(m_env);
     }
+
+    std::shared_ptr<Page> listFile(std::string const& name, int pageNum);
 
     int saveFileInfo(std::shared_ptr<FileInfo> const& fileMessage);
 
@@ -71,6 +90,9 @@ private:
 
     std::string findKv(std::string const& key);
     bool saveKv(std::string const& key, std::string const& val);
+
+    int saveFileList(std::string const& key, std::vector<std::string> const& data);
+    std::vector<std::string> getFileList(std::string const& key);
 
     std::map<std::string, std::string>   m_kvRLU;
     std::mutex                           m_kvMutex;

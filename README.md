@@ -16,6 +16,8 @@ A tiny file server
 
      POST  
      body={"xxx":"xxx"}  
+- 5. {endpoint}/fs/open-api/v1/list?pageNum=1  
+     GET  
 
 
 ### Private API

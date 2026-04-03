@@ -89,6 +89,21 @@ std::string fs::common::getNowTime() {
     return std::move(nowStr);
 }
 
+long long fs::common::timeToLong(std::string const& str) {
+    struct tm tm_;
+    int year, month, day, hour, minute, second;
+    sscanf(str.c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
+    tm_.tm_year = year - 1900;
+    tm_.tm_mon = month - 1;
+    tm_.tm_mday = day;
+    tm_.tm_hour = hour;
+    tm_.tm_min = minute;
+    tm_.tm_sec = second;
+    tm_.tm_isdst = 0;
+    time_t timeStamp = mktime(&tm_);
+    return timeStamp;
+}
+
 int fs::common::getUint8sFromHex(std::string const& hex, uint8_t* bytes) {
     for(int i = 0 ; i < hex.length(); i+=2) {
         uint8_t h1 = hex[i], h2 = hex[i+1];

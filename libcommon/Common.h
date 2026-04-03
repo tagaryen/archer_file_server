@@ -21,6 +21,8 @@
 
 #define FS_ICON_API                       "/favicon.ico"
 
+#define FS_FILE_LIST_API                  "/fs/open-api/v1/list"
+
 #define FS_OPEN_API                       "/fs/open-api/"
 #define FS_OPEN_API_FILE_UPLOAD           "/fs/open-api/v1/upload"
 #define FS_OPEN_API_FILE_VIEW             "/fs/open-api/v1/view"
@@ -52,6 +54,7 @@ void createDirectories(std::string const& path);
 std::string getCurrentPath();
 bool fileExists(const std::string& filename);
 std::string getNowTime();
+long long timeToLong(std::string const& s);
 int getUint8sFromHex(std::string const& hex, uint8_t* bytes);
 std::string getHexFromUint8s(const uint8_t* bytes, size_t bytes_len);
 EcPublicKey * getPublicKeyFromHex(std::string const& hex);

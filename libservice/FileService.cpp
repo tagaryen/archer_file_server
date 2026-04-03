@@ -40,6 +40,22 @@ std::shared_ptr<fs::database::FileInfo> FileService::getFileInfo(std::string con
     return m_fileDB->getFileInfo(key);
 }
 
+
+void FileService::handleFileListMessage(std::shared_ptr<server::ServerRequest> const& request, int pageNum) {
+    std::shared_ptr<fs::database::Page> page = m_fileDB->listFile(request->getPublicKeyHex(), pageNum);
+    std::string resultJson = "{\"total\":" + std::to_string(page->getTotal());
+    resultJson += ",\"pageNum\":" + std::to_string(page->getPageNum());
+    resultJson += ",\"files\":[";
+    for(auto f: page->getFile()) {
+        resultJson += "{\"filename\":\"" + f.getRealName() + "\",\"time\":\""+f.getUpdateTime()+"\"},";
+    }
+    if(page->getFile().size() > 0) {
+        resultJson = resultJson.substr(0, resultJson.length() - 1);
+    }
+    resultJson += "]}";
+    request->sendOk("{\"success\":true, \"data\":" + resultJson + "}");
+}
+
 void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerRequest> const& request, std::shared_ptr<fs::database::FileInfo> const& fileInfo) {
     std::string filename = request->getFilename();
 

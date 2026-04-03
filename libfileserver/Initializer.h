@@ -8,6 +8,7 @@
 #include <libapi/FileViewOpenApi.h>
 #include <libapi/FileUploadApi.h>
 #include <libapi/FileUploadOpenApi.h>
+#include <libapi/FileListApi.h>
 #include <libapi/JsonGetApi.h>
 #include <libapi/JsonGetOpenApi.h>
 #include <libapi/JsonSaveApi.h>
