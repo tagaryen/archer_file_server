@@ -46,8 +46,10 @@ void FileService::handleFileListMessage(std::shared_ptr<server::ServerRequest> c
     std::string resultJson = "{\"total\":" + std::to_string(page->getTotal());
     resultJson += ",\"pageNum\":" + std::to_string(page->getPageNum());
     resultJson += ",\"files\":[";
+    std::string size;
     for(auto f: page->getFile()) {
-        resultJson += "{\"filename\":\"" + f.getRealName() + "\",\"time\":\""+f.getUpdateTime()+"\"},";
+        size = std::to_string(f.getSize());
+        resultJson += "{\"filename\":\"" + f.getRealName() + "\",\"time\":\""+f.getUpdateTime()+"\",\"size\":"+size+"},";
     }
     if(page->getFile().size() > 0) {
         resultJson = resultJson.substr(0, resultJson.length() - 1);
@@ -77,7 +79,7 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
     int fd = fileno(file);
 
     bool ok = true;
-    size_t bufLen = 0;
+    size_t bufLen = 0, totalLen = 0;
     char *buf = NULL;
 
 #ifdef _WIN32
@@ -109,9 +111,11 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
                         break;
                     } else {
                         if(len + i + 1 > bufLen) {
+                            totalLen += bufLen-s;
                             fwrite(buf+s, sizeof(char), bufLen-s, file);
                             break;
                         } else {
+                            totalLen += len;
                             fwrite(buf+(i+1), sizeof(char), len, file);
                         }
                         i += 1 + len;
@@ -123,6 +127,7 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
             buf = NULL;
             bufLen = 0;
         } else if(contentLength > 0) {
+            totalLen += bufLen;
             fwrite(buf, sizeof(char), bufLen, file);
             free(buf);
             buf = NULL;
@@ -143,6 +148,7 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
         request->sendBadRequest();
         return ;
     }
+    fileInfo->setSize(totalLen);
     if(m_fileDB->saveFileInfo(fileInfo)) {
         remove(path.c_str());
         request->sendInternalError();

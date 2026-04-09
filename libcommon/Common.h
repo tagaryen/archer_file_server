@@ -39,7 +39,7 @@
 #define FS_API_JSON                       "/fs/api/v1/json"
 
 #define MAX_FILE_NAME_LEN                 512    
-#define TIME_FORMAT_LEN                   20                    
+#define TIME_FORMAT_LEN                   19                    
 
 #ifndef HTTP_AUTHFAILED
 #define HTTP_AUTHFAILED                   401
@@ -59,6 +59,10 @@ int getUint8sFromHex(std::string const& hex, uint8_t* bytes);
 std::string getHexFromUint8s(const uint8_t* bytes, size_t bytes_len);
 EcPublicKey * getPublicKeyFromHex(std::string const& hex);
 EcSignature * getSignatureFromHex(std::string const& hex);
+std::string encode(const std::vector<uint8_t>& data);
+std::string encode(const std::string& data); 
+std::vector<uint8_t> decode(const std::string& encoded_string);
+std::string decode_to_string(const std::string& encoded_string);
 }
 }
 

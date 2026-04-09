@@ -28,6 +28,11 @@ void FileServer::listen(std::string const& host, std::uint16_t const& port) {
         
         std::string uri(http_request_get_uri(req));
         std::string method(http_request_get_method(req));
+        
+        if(uri.empty() || uri == "/") {
+            self->sendIndexHtml(res);
+            return ;
+        }
 
         if(uri == self->getIconUri()) {
             self->sendIcon(res);
@@ -114,5 +119,13 @@ void FileServer::sendIcon(HttpResponse *res) {
     const char *body = fs::common::ICON_SRC;
     size_t len = fs::common::ICON_SRC_LEN;
     http_response_send_response(res, body, len);
+}
+
+
+void FileServer::sendIndexHtml(HttpResponse *res) {
+    http_response_set_status(res, 200);
+    http_response_set_content_type(res, "text/html");
+    std::vector<uint8_t> content = fs::common::decode(INDEX_HTML);
+    http_response_send_response(res, (const char *)content.data(), content.size()-1);
 }
 

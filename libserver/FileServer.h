@@ -2,6 +2,7 @@
 
 #include <libcommon/Common.h>
 #include <libcommon/Icon.h>
+#include <libcommon/Index.h>
 #include <libcommon/GlobalConfig.h>
 
 #include "archer_net.h"
@@ -37,6 +38,8 @@ private:
     void sendNotFound(HttpResponse *res);
     
     void sendIcon(HttpResponse *res);
+
+    void sendIndexHtml(HttpResponse *res);
 
     std::string                                   m_iconUri = FS_ICON_API;
     HttpServer                                   *m_http;

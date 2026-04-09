@@ -29,6 +29,9 @@ public:
     std::string const& encode() {return m_encode;};
     void decode(const char *data, size_t data_len);
 
+    void setSize(size_t size) {m_size = size;};
+    size_t getSize() {return m_size;};
+
 private:
     bool             m_valid;
     std::string      m_name;
@@ -36,6 +39,7 @@ private:
     std::string      m_publicKeyHex;
     std::string      m_updateTime;
     std::string      m_contentType;
+    size_t           m_size;
 
     std::string      m_encode;
 };

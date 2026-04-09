@@ -68,6 +68,7 @@ void FileInfo::decode(const char *data, size_t data_len) {
 
     m_encode = std::string(data, data_len);
     m_name = m_encode.substr(0, 64);
+    LOG_trace("Fileinfo m_encode = %s, m_name=%s", m_encode, m_name);
     size_t off = 65;
     if(includePublicKey) {
         m_publicKeyHex = m_encode.substr(off, 128);
@@ -184,7 +185,7 @@ std::vector<std::string> DataBase::getFileList(std::string const& key) {
     dbKey.mv_data = (void *)(key.c_str());
 
     dbValue.mv_size = 0;
-    LOG_info("database Begin read transaction Key = %s", key.c_str());
+    LOG_trace("database Begin read transaction Key = %s", key.c_str());
     if((rc = mdb_get(txn, m_dbi, &dbKey, &dbValue))) {
         LOG_error("database Readding key %s failed, due to %s", key.c_str(), mdb_strerror(rc));
         mdb_txn_abort(txn);
@@ -221,7 +222,7 @@ int DataBase::saveFileList(std::string const& key, std::vector<std::string> cons
         return rc;
     }
 
-    LOG_info("database Begin write transaction key = %s, value = %s", 
+    LOG_trace("database Begin write transaction key = %s, value = %s", 
             key.c_str(), value.c_str());
 
     dbKey.mv_size = key.length();
@@ -258,7 +259,7 @@ std::shared_ptr<Page> DataBase::listFile(std::string const& publicKeyHex, int pa
         return std::make_shared<Page>(0, pageNum, std::vector<FileInfo>());
     } 
     std::sort(list.begin(), list.end(), [](std::string a, std::string b) {
-        return fs::common::timeToLong(a.substr(0, 20)) > fs::common::timeToLong(b.substr(0, 20));
+        return fs::common::timeToLong(a.substr(0, 19)) > fs::common::timeToLong(b.substr(0, 19));
     });
     int total = list.size();
     if(total <= 0) {
@@ -273,12 +274,22 @@ std::shared_ptr<Page> DataBase::listFile(std::string const& publicKeyHex, int pa
     if(end > total) {
         end = total;
     }
+    std::string sizeStr;
     for(auto it = list.begin() + start; it != list.begin() + end; it++) {
-        files.push_back(FileInfo((*it).substr(20), "", (*it).substr(0, 19), ""));
+        FileInfo file((*it).substr(23), "", (*it).substr(0, 19), "");
+        sizeStr = (*it).substr(19, 23);
+        size_t l0 = (uint8_t)sizeStr[0];
+        size_t l1 = (uint8_t)sizeStr[1];
+        size_t l2 = (uint8_t)sizeStr[2];
+        size_t l3 = (uint8_t)sizeStr[3];
+        file.setSize((l0 << 24) | (l1 << 16) | (l2 << 8) | l3);
+        files.push_back(file);
     }
     return std::make_shared<Page>(total, pageNum, files);
 }
 
+// 2025-04-05 12:23:451027README.md
+// 2025-04-05 12:23:451027LICENSE
 int DataBase::saveFileInfo(std::shared_ptr<FileInfo> const& fileInfo) {
 
     std::string fileKey = fileInfo->getPublicKeyHex();
@@ -287,10 +298,14 @@ int DataBase::saveFileInfo(std::shared_ptr<FileInfo> const& fileInfo) {
     }
 
     bool saved = false;
-    std::string val = fileInfo->getUpdateTime() + fileInfo->getRealName();
+    size_t size = fileInfo->getSize();
+    char lenChar[5] = {(char)((size >> 24) & 0xff), (char)((size >> 16) & 0xff), (char)((size >> 8) & 0xff), (char)(size & 0xff), 0};
+    std::string lenStr(lenChar, 4);
+    std::string val = fileInfo->getUpdateTime() + lenStr + fileInfo->getRealName();
+    LOG_info("save file as list value: name=%s, size=%llu", fileInfo->getRealName().c_str(), fileInfo->getSize());
     std::vector<std::string> list = getFileList(fileKey);
     for(size_t i = 0; i < list.size(); i++) {
-        if(list[i].substr(19) == val.substr(19)) {
+        if(list[i].substr(23) == val.substr(23)) {
             list[i] = val;
             saved = true;
             break;
