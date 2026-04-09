@@ -1,5 +1,6 @@
-# tiny_file_server
-A tiny file server
+# tiny_file_server  
+A tiny file server  
+visit {endpoint}/ to see file list  
 
 ## API 
 
