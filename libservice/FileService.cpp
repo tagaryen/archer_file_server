@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <sys/file.h>
+#include <sstream>  
+#include <regex>  
 
 using namespace fs::service;
 
@@ -13,6 +15,43 @@ using namespace fs::service;
 
 static std::string fileChunked = "chunked";
 static const int fileHexMap[] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 127, 127, 127, 127, 127, 127, 127, 10, 11, 12, 13, 14, 15, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 10, 11, 12, 13, 14, 15, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
+static std::string multipartHead = "multipart/form-data; boundary=";
+
+struct MultiPartPos
+{
+    size_t start;
+    size_t end;
+};
+
+
+static MultiPartPos matchContentTypeAndGetOffset(std::string const& tmp, std::string const& bound, std::shared_ptr<fs::database::FileInfo> const& fileInfo) {
+    MultiPartPos pos;
+    pos.start = 0;
+    pos.end = tmp.length();
+    size_t off;
+    if(tmp.find(bound, 0) == 0) {
+        off = tmp.find("\r\n\r\n", bound.length()+2);
+        if(off == std::string::npos) {
+            pos.start = off;
+            LOG_error("Upload file multipart parse error, '%s'", tmp);
+            return pos;
+        }
+        std::string part = tmp.substr(bound.length() + 2, off);
+        std::string type = "application/none";
+        std::smatch match; 
+        std::regex type_regex(R"(Content-Type:\s*([^\r\n]+))", std::regex_constants::icase);  
+        if (std::regex_search(part, match, type_regex)) {  
+            type = match[1].str();  
+        } 
+        fileInfo->setContentType(type);
+        pos.start = off + 4;
+    }
+    off = tmp.find(bound + "--", 0);
+    if(off != std::string::npos) {
+        pos.end = off - 2;
+    }
+    return pos;
+}
 
 static int bytesToInt(char *data, int from, int to) {
     int ret = 0;
@@ -68,6 +107,12 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
     path += name;
 
 
+    std::string contentType = request->getContentType();
+    if(contentType.find(multipartHead, 0) == std::string::npos) {
+        request->sendBadRequest();
+        return ;
+    }
+    std::string bound = "--"+contentType.substr(multipartHead.length());
     std::string encoding = request->getHeader("Transfer-Encoding");
     uint32_t contentLength = request->getContentLength();
 
@@ -93,6 +138,8 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
         request->sendInternalError();
         return ;
     }
+    std::string tmp;
+    struct MultiPartPos pos;
     while (true) {
         request->readBytes(&buf, &bufLen);
         if(!buf || bufLen == 0) {
@@ -100,8 +147,8 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
         }
         LOG_trace("Upload file transfer-encoding=%s, content-length=%lu", encoding.c_str(), contentLength);
         if(fileChunked == encoding) {
-			int s = 0, len = 0;
-            for(int i = 0; i < bufLen; i++) {
+			size_t s = 0, len = 0;
+            for(size_t i = 0; i < bufLen; i++) {
                 if(buf[i] == '\n') {
                     if(i == bufLen - 1) {
                         break;
@@ -111,12 +158,25 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
                         break;
                     } else {
                         if(len + i + 1 > bufLen) {
-                            totalLen += bufLen-s;
-                            fwrite(buf+s, sizeof(char), bufLen-s, file);
+                            tmp = std::string(buf+s, bufLen);
+                            pos = matchContentTypeAndGetOffset(tmp, bound, fileInfo);
+                            if(pos.start == std::string::npos) {
+                                ok = false;
+                                break;
+                            }
+                            totalLen += pos.end - pos.start;
+                            fwrite(tmp.c_str() + pos.start, sizeof(char), pos.end - pos.start, file);
                             break;
                         } else {
-                            totalLen += len;
-                            fwrite(buf+(i+1), sizeof(char), len, file);
+                            tmp = std::string(buf+(i+1), len);
+                            pos = matchContentTypeAndGetOffset(tmp, bound, fileInfo);
+                            if(pos.start == std::string::npos) {
+                                ok = false;
+                                break;
+                            }
+                            totalLen += pos.end - pos.start;
+                            fwrite(tmp.c_str() + pos.start, sizeof(char), pos.end - pos.start, file);
+                            
                         }
                         i += 1 + len;
                     }
@@ -127,8 +187,14 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
             buf = NULL;
             bufLen = 0;
         } else if(contentLength > 0) {
-            totalLen += bufLen;
-            fwrite(buf, sizeof(char), bufLen, file);
+            tmp = std::string(buf, bufLen);
+            pos = matchContentTypeAndGetOffset(tmp, bound, fileInfo);
+            if(pos.start == std::string::npos) {
+                ok = false;
+                break;
+            }
+            totalLen += pos.end - pos.start;
+            fwrite(tmp.c_str() + pos.start, sizeof(char), pos.end - pos.start, file);
             free(buf);
             buf = NULL;
             bufLen = 0;

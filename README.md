@@ -5,7 +5,7 @@ visit {endpoint}/ to see file list
 ## API 
 
 ### Public API
-- 1. {endpoint}/fs/open-api/v1/upload  
+- 1. {endpoint}/fs/open-api/v1/upload?filename=xxx  
      POST  
      body=FormData  
 - 2. {endpoint}/fs/open-api/v1/view?filename=xxx  

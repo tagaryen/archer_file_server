@@ -25,12 +25,13 @@ public:
     std::string const& getPublicKeyHex() {return m_publicKeyHex;}
     std::string const& getUpdateTime() {return m_updateTime;}
     std::string const& getContentType() {return m_contentType;}
+    size_t getSize() {return m_size;};
 
     std::string const& encode() {return m_encode;};
     void decode(const char *data, size_t data_len);
 
     void setSize(size_t size) {m_size = size;};
-    size_t getSize() {return m_size;};
+    void setContentType(std::string const& contentType) {m_contentType = contentType;};
 
 private:
     bool             m_valid;
