@@ -47,6 +47,15 @@ FileInfo::FileInfo(std::string const& realName, std::string const& publicKeyHex,
     LOG_trace("Fileinfo encoded = %s", m_encode.c_str());
 }
 
+void FileInfo::setContentType(std::string const& contentType) {
+    m_contentType = contentType;
+    
+    std::string nameLen = FileInfoIntToString(m_realName.length());
+    m_encode = m_name + (m_publicKeyHex.empty()?'0':'1') + m_publicKeyHex + m_updateTime + nameLen + m_realName + m_contentType;
+
+    LOG_trace("Set contentType encoded = %s", m_encode.c_str());
+};
+
 void FileInfo::decode(const char *data, size_t data_len) {
     LOG_trace("Fileinfo raw size = %llu", data_len);
     if(data_len < 65) {
@@ -302,7 +311,7 @@ int DataBase::saveFileInfo(std::shared_ptr<FileInfo> const& fileInfo) {
     char lenChar[5] = {(char)((size >> 24) & 0xff), (char)((size >> 16) & 0xff), (char)((size >> 8) & 0xff), (char)(size & 0xff), 0};
     std::string lenStr(lenChar, 4);
     std::string val = fileInfo->getUpdateTime() + lenStr + fileInfo->getRealName();
-    LOG_info("save file as list value: name=%s, size=%llu", fileInfo->getRealName().c_str(), fileInfo->getSize());
+    LOG_info("Save file as list value: name=%s, size=%llu, contentType=%s", fileInfo->getRealName().c_str(), fileInfo->getSize(), fileInfo->getContentType().c_str());
     std::vector<std::string> list = getFileList(fileKey);
     for(size_t i = 0; i < list.size(); i++) {
         if(list[i].substr(23) == val.substr(23)) {

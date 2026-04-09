@@ -31,7 +31,7 @@ public:
     void decode(const char *data, size_t data_len);
 
     void setSize(size_t size) {m_size = size;};
-    void setContentType(std::string const& contentType) {m_contentType = contentType;};
+    void setContentType(std::string const& contentType);
 
 private:
     bool             m_valid;
