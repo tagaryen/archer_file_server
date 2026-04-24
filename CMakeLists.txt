@@ -41,9 +41,9 @@ add_executable(archer-file ${ALL_SOURCE_FILES})
 target_include_directories(archer-file PRIVATE ${CMAKE_SOURCE_DIR} )
 
 target_link_libraries(archer-file
-    archer_net-linux
+    archer_net
     jsoncpp
-    alg-linux
+    alg
     lmdb
     dl
     pthread

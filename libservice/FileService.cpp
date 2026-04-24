@@ -125,7 +125,7 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
 
     bool ok = true;
     size_t bufLen = 0, totalLen = 0;
-    char *buf = NULL;
+    char buf[128 * 1024];
 
 #ifdef _WIN32
     if(__lock_fhandle(fd) < 0) {
@@ -141,8 +141,8 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
     std::string tmp;
     struct MultiPartPos pos;
     while (true) {
-        request->readBytes(&buf, &bufLen);
-        if(!buf || bufLen == 0) {
+        bufLen = request->readBytes(buf, 128 * 1024);
+        if(bufLen <= 0) {
             break;
         }
         LOG_trace("Upload file transfer-encoding=%s, content-length=%lu", encoding.c_str(), contentLength);
@@ -183,9 +183,6 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
                     s = i + 1;
                 }
 			}
-            free(buf);
-            buf = NULL;
-            bufLen = 0;
         } else if(contentLength > 0) {
             tmp = std::string(buf, bufLen);
             pos = matchContentTypeAndGetOffset(tmp, bound, fileInfo);
@@ -195,13 +192,11 @@ void FileService::handleFileUpoadMessage(std::shared_ptr<fs::server::ServerReque
             }
             totalLen += pos.end - pos.start;
             fwrite(tmp.c_str() + pos.start, sizeof(char), pos.end - pos.start, file);
-            free(buf);
-            buf = NULL;
-            bufLen = 0;
         } else {
             ok = false;
             break;
         }
+        bufLen = 0;
 	}
 #ifdef _WIN32
     _unlock_fhandle(fd);

@@ -21,11 +21,11 @@ ServerRequest::ServerRequest(HttpRequest *req, HttpResponse *res, RequestType ty
     }
 
     LOG_trace("Request search uri publicKeyHex and signature");
-    const char *publicKeyHex = http_request_get_query_param(m_req, "publicKeyHex");
+    const char *publicKeyHex = http_request_get_query(m_req, "publicKeyHex");
     if(publicKeyHex) {
         m_publicKeyHex = std::string(publicKeyHex);
     }
-    const char *signature = http_request_get_query_param(req, "signature");
+    const char *signature = http_request_get_query(req, "signature");
     if(signature) {
         m_signature = std::string(signature);
     }
@@ -36,7 +36,7 @@ void ServerRequest::parseFileRequest() {
     if(m_uri == FS_FILE_LIST_API) {
         return ;
     }
-    const char *filename = http_request_get_query_param(m_req, "filename");
+    const char *filename = http_request_get_query(m_req, "filename");
     if(!filename) {
         m_isValid = false;
         LOG_warn("request Can not get a valid filename");
@@ -59,7 +59,7 @@ void ServerRequest::parseFileRequest() {
 }
 
 void ServerRequest::parseJsonRequest() {
-    const char *key = http_request_get_query_param(m_req, "key");
+    const char *key = http_request_get_query(m_req, "key");
     if(!key) {
         m_isValid = false;
         LOG_warn("request Can not get a valid key");
@@ -85,7 +85,7 @@ void ServerRequest::parseJsonRequest() {
             return;
         }
 
-        char *body = NULL;
+        void *body = NULL;
         size_t body_size = 0;
         http_request_read_all_body(m_req, &body, &body_size);
         if(!body) {
@@ -94,7 +94,7 @@ void ServerRequest::parseJsonRequest() {
             sendBadRequest("{\"success\":false,\"error\":\"body not found\"}");
             return;
         }
-        m_json = std::string(body, body_size);
+        m_json = std::string((char *)body, body_size);
         free(body);
     }
     
@@ -157,8 +157,8 @@ void ServerRequest::endResponse() {
 }
 
 
-void ServerRequest::readBytes(char **data, size_t *dataLen) {
-    http_request_read_some(m_req, data, dataLen);
+int ServerRequest::readBytes(char *data, size_t dataLen) {
+    return http_request_read_some(m_req, (void *)data, dataLen);
 }
 
 bool ServerRequest::verifyAuth(std::shared_ptr<SignatureFilter> const& filter) {

@@ -30,7 +30,7 @@ public:
     void beginResponse();
     void sendBytes(const char *data, size_t dataLen);
     void endResponse();
-    void readBytes(char **data, size_t *dataLen);
+    int readBytes(char *data, size_t dataLen);
     bool verifyAuth(std::shared_ptr<SignatureFilter> const& filter);
 
     bool isValid() {return m_isValid;}
@@ -45,7 +45,6 @@ public:
     std::string const& getSignature() {return m_signature;}
     std::string getHeader(std::string const& key);
     void setResponseHeader(const char *key, const char *value);
-    
     int getRequestType() {return m_type;}
 
     
