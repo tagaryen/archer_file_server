@@ -30,9 +30,8 @@ public:
 
     // 喂入数据块
     void feed(const char* data, size_t len);
-
-    // 当前解析是否成功完成
     bool isDone() const { return m_state == PARSE_END; }
+    bool isError() const { return m_state == PARSE_ERROR; }
 
     // 当前part的文件流式回调
     void setFileDataCallback(FileDataCallback cb) { m_fileCb = std::move(cb); }
@@ -40,15 +39,23 @@ public:
 private:
     enum State {
         PARSE_BOUNDARY,   // 等待第一个边界
-        PARSE_HEADERS,    // 解析当前部分的头部
+        PARSE_HEADER,    // 解析当前部分的头部
         PARSE_BODY,       // 解析正文数据
-        PARSE_END         // 解析完成
+        PARSE_END,         // 解析完成
+        PARSE_ERROR         // 解析完成
     };
 
-    // 处理一个完整行（以 \r\n 结尾）
-    void processLine(const std::string& line);
-    // 处理正文数据（直到遇到下一个边界）
-    void processBodyData(const char* data, size_t len);
+    void processHeader(const std::string& line);
+    bool processBodyData();
+    
+    void clearCurrentPart() {
+        m_currentPart.name.clear();
+        m_currentPart.filename.clear();
+        m_currentPart.isFile = false;
+        m_currentPart.contentType.clear();
+        m_currentPart.data.clear();
+    }
+
 
     State m_state = PARSE_BOUNDARY;
     std::string m_boundary;          // 原始boundary，例如 "----WebKitFormBoundary..."
@@ -56,12 +63,9 @@ private:
     std::string m_endBoundary;      // "--" + m_boundary + "--"
 
     std::vector<Multipart> m_parts;
-
-    // 当前 part 的临时变量
     Multipart m_currentPart;
-    // 缓冲未完成的行
-    std::string m_lineBuffer;
 
-    // 当前 part 为文件时的回调
+    std::string m_buf;
+
     FileDataCallback m_fileCb;
 };
